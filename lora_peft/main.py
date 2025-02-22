@@ -6,10 +6,6 @@ from transformers import BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, TaskType
 from transformers import Trainer, TrainingArguments
 
-model_name = "/d2/mxy/Models/DeepSeek-R1-Distill-Qwen-1.5B"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-# model = AutoModelForCausalLM.from_pretrained(model_name)
-
 with open("./dataset/dataset.jsonl", "w", encoding="utf-8") as f:
     for s in samples:
         json_line = json.dumps(s, ensure_ascii=False)
@@ -22,6 +18,10 @@ dataset = load_dataset("json", data_files="./dataset/dataset.jsonl", split="trai
 train_test_split = dataset.train_test_split(test_size=0.1)
 train_dataset = train_test_split["train"]
 test_dataset = train_test_split["test"]
+
+model_name = "/d2/mxy/Models/DeepSeek-R1-Distill-Qwen-1.5B"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+# model = AutoModelForCausalLM.from_pretrained(model_name)
 
 def tokenize_function(examples):
     texts = [f"{prompt}\n{completion}" for prompt, completion in zip(examples["prompt"], examples["completion"])]
@@ -84,6 +84,7 @@ save_path = "./saved_models"
 model.save_pretrained(save_path)
 tokenizer.save_pretrained(save_path)
 
+# 合并LoRA权重到基础模型
 from peft import PeftModel
 final_save_path = "./final_saved_models"
 base_model = AutoModelForCausalLM.from_pretrained(model_name)
