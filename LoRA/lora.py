@@ -15,7 +15,7 @@ class LoraLinear(nn.Module):
     
         self.linear = nn.Linear(in_features, out_features)
         if rank > 0:
-            # 构建第一个权重参数
+            # 构建权重参数
             self.lora_b = nn.Parameter(torch.zeros(out_features, rank))
             self.lora_a = nn.Parameter(torch.zeros(rank, in_features))
             self.scale = self.alpha / rank
