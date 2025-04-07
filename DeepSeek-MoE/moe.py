@@ -3,11 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class BasicExpert(nn.Module):
-    def __init__(self, in_features, out_features, num_experts):
+    def __init__(self, in_features, out_features):
         super(BasicExpert, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.num_experts = num_experts
         self.expert = nn.Linear(in_features, out_features)
         
     def forward(self, x):
