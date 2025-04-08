@@ -61,7 +61,6 @@ class SparseMoE(nn.Module):
         self.device = config.device
         self.dropout = config.dropout
 
-        # 初始化专家
         self.experts = nn.ModuleList(
             [BasicMoE(self.hidden_dim, self.hidden_dim) for _ in range(self.num_experts)]
         )
