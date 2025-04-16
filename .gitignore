@@ -1,2 +1,3 @@
-NLP_Task/Sentiment analysis/data
-NLP_Task/Summary generation/data
+NLP_Task/Sentiment_analysis/data
+NLP_Task/Sentiment_analysis/models/BiLSTM/best_model.pth
+NLP_Task/Summary_generation/data

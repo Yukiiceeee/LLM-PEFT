@@ -41,7 +41,7 @@ class SentimentDataset(Dataset):
             'label': torch.tensor(label, dtype=torch.long)
         }
 
-def load_sentiment_datasets(data_dir, tokenizer_name="bert-base-chinese", max_length=512, batch_size=16):
+def load_datasets(data_dir, tokenizer_name="bert-base-chinese", max_length=512, batch_size=16):
     train_dataset = SentimentDataset(
         os.path.join(data_dir, 'train_data.csv'),
         tokenizer_name,
