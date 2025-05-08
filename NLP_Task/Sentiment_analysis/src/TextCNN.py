@@ -18,6 +18,8 @@ from dataset import SentimentDataset
 from dataset import load_datasets
 import re
 import os
+import matplotlib.pyplot as plt
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 class TextCNN(nn.Module):
     def __init__(self, bert_model_name, num_channels, kernel_sizes, num_classes, dropout=0.2, freeze_bert=False):
@@ -72,6 +74,12 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
         'best_val_acc': 0.0,
         'learning_rates': []
     }
+    
+    step_states = {
+        'steps': [],
+        'train_loss': []
+    }
+    global_step = 0
 
     training_states['learning_rates'].append(optimizer.param_groups[0]['lr'])
 
@@ -80,6 +88,9 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
         train_loss = 0.0
         train_correct = 0
         train_total = 0
+        
+        all_labels = []
+        all_predictions = []
 
         progress_bar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}')
         for batch_idx, batch in enumerate(progress_bar):
@@ -100,6 +111,23 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
             _, predicted = outputs.max(1)
             train_total += labels.size(0)
             train_correct += predicted.eq(labels).sum().item()
+            
+            all_predictions.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+            
+            global_step += 1
+            if global_step % 10 == 0:
+                step_states['steps'].append(global_step)
+                step_states['train_loss'].append(loss.item())
+                
+                plt.figure(figsize=(10, 6))
+                plt.plot(step_states['steps'], step_states['train_loss'])
+                plt.xlabel('Steps')
+                plt.ylabel('Loss')
+                plt.title('Training Loss per 10 Steps')
+                plt.grid(True)
+                plt.savefig(os.path.join(save_dir, 'step_loss_curve.png'))
+                plt.close()
 
             current_loss = train_loss / (batch_idx + 1)
             current_acc = 100. * train_correct / train_total
@@ -111,10 +139,16 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
         train_loss = train_loss / len(train_loader)
         train_acc = 100. * train_correct / train_total
         
+        train_precision, train_recall, train_f1, _ = precision_recall_fscore_support(
+            all_labels, all_predictions, average='binary'
+        )
+        
         model.eval()
         val_loss = 0.0
         val_correct = 0
         val_total = 0
+        val_predictions = []
+        val_labels_list = []
         
         with torch.no_grad():
             val_progress_bar = tqdm(val_loader, desc='Validating')
@@ -131,6 +165,9 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
                 _, predicted = outputs.max(1)
                 val_total += labels.size(0)
                 val_correct += predicted.eq(labels).sum().item()
+                
+                val_predictions.extend(predicted.cpu().numpy())
+                val_labels_list.extend(labels.cpu().numpy())
 
                 current_val_loss = val_loss / (batch_idx + 1)
                 current_val_acc = 100. * val_correct / val_total
@@ -141,6 +178,10 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
         
         val_loss = val_loss / len(val_loader)
         val_acc = 100. * val_correct / val_total
+        
+        val_precision, val_recall, val_f1, _ = precision_recall_fscore_support(
+            val_labels_list, val_predictions, average='binary'
+        )
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]['lr']
@@ -154,8 +195,49 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
         
         print(f'\nEpoch {epoch+1}/{num_epochs}:')
         print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%')
+        print(f'Train Precision: {train_precision:.4f}, Recall: {train_recall:.4f}, F1: {train_f1:.4f}')
         print(f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%')
+        print(f'Val Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1: {val_f1:.4f}')
         print(f'Learning Rate: {current_lr:.6f}')
+        
+        epoch_metrics = {
+            'epoch': epoch + 1,
+            'train_loss': train_loss,
+            'train_acc': train_acc,
+            'train_precision': train_precision,
+            'train_recall': train_recall,
+            'train_f1': train_f1,
+            'val_loss': val_loss,
+            'val_acc': val_acc,
+            'val_precision': val_precision,
+            'val_recall': val_recall,
+            'val_f1': val_f1,
+            'lr': current_lr
+        }
+        
+        with open(os.path.join(save_dir, f'epoch_{epoch+1}_metrics.json'), 'w', encoding='utf-8') as f:
+            json.dump(epoch_metrics, f, indent=4)
+        
+        plt.figure(figsize=(15, 10))
+        
+        plt.subplot(2, 2, 1)
+        plt.plot(training_states['epochs'], training_states['train_loss'], label='Train Loss')
+        plt.plot(training_states['epochs'], training_states['val_loss'], label='Val Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Loss per Epoch')
+        
+        plt.subplot(2, 2, 2)
+        plt.plot(training_states['epochs'], training_states['train_acc'], label='Train Acc')
+        plt.plot(training_states['epochs'], training_states['val_acc'], label='Val Acc')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy (%)')
+        plt.legend()
+        plt.title('Accuracy per Epoch')
+        
+        plt.savefig(os.path.join(save_dir, 'training_metrics.png'))
+        plt.close()
         
         if val_acc > best_val_acc:
             best_val_acc = val_acc
@@ -166,6 +248,9 @@ def train(model, train_loader, val_loader, criterion, optimizer, scheduler, num_
     with open(os.path.join(save_dir, 'train_state.json'), 'w', encoding='utf-8') as f:
         json.dump(training_states, f, indent=4)
     
+    with open(os.path.join(save_dir, 'step_loss.json'), 'w', encoding='utf-8') as f:
+        json.dump(step_states, f, indent=4)
+    
     print(f'Best Validation Accuracy: {best_val_acc:.2f}%')
     return best_val_acc
 
@@ -174,6 +259,9 @@ def evaluate(model, test_loader, criterion, device):
     test_loss = 0.0
     test_correct = 0
     test_total = 0
+    
+    all_predictions = []
+    all_labels = []
     
     with torch.no_grad():
         for batch in tqdm(test_loader, desc='Testing'):
@@ -189,11 +277,26 @@ def evaluate(model, test_loader, criterion, device):
             _, predicted = outputs.max(1)
             test_total += labels.size(0)
             test_correct += predicted.eq(labels).sum().item()
+            
+            all_predictions.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
     
     test_loss = test_loss/len(test_loader)
     test_acc = 100. * test_correct / test_total
     
-    return test_loss, test_acc
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        all_labels, all_predictions, average='binary'
+    )
+    
+    metrics = {
+        'accuracy': test_acc,
+        'precision': precision * 100,
+        'recall': recall * 100,
+        'f1': f1 * 100,
+        'loss': test_loss
+    }
+    
+    return test_loss, test_acc, metrics
 
 def main():
     parser = argparse.ArgumentParser()
@@ -269,11 +372,14 @@ def main():
     )
 
     model.load_state_dict(torch.load(os.path.join(args.save_dir, 'best_model.pth')))
-    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
+    test_loss, test_acc, test_metrics = evaluate(model, test_loader, criterion, device)
     
     test_results = {
         'test_loss': test_loss,
         'test_accuracy': test_acc,
+        'precision': test_metrics['precision'],
+        'recall': test_metrics['recall'],
+        'f1': test_metrics['f1'],
         'best_val_accuracy': best_val_acc
     }
     
@@ -283,6 +389,9 @@ def main():
     print(f'\nTest Results:')
     print(f'Test Loss: {test_loss:.4f}')
     print(f'Test Accuracy: {test_acc:.2f}%')
+    print(f'Precision: {test_metrics["precision"]:.2f}%')
+    print(f'Recall: {test_metrics["recall"]:.2f}%')
+    print(f'F1 Score: {test_metrics["f1"]:.2f}%')
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,18 @@
+
+Training Summary
+================
+Total Epochs: 3.997586
+Final Loss: 0.130100
+Average Loss: 0.172076
+Loss Std Dev: 0.371935
+Min Loss: 0.002100
+Max Loss: 2.213700
+Final Learning Rate: 0.000000
+Average Gradient Norm: 0.560752
+
+Evaluation Summary
+==================
+Final Eval Loss: 0.045239
+Best Eval Loss: 0.045239
+Average Eval Loss: 0.088712
+Number of Evaluations: 12.000000
