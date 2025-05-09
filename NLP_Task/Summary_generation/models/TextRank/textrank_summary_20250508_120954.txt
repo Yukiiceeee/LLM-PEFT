@@ -1,0 +1,9 @@
+TextRank Summarization Results
+Timestamp: 20250508_120954
+Number of samples: 2108915
+
+Average Scores:
+ROUGE-1: P=0.0000, R=0.0000, F1=0.0000
+ROUGE-2: P=0.0000, R=0.0000, F1=0.0000
+ROUGE-L: P=0.0000, R=0.0000, F1=0.0000
+BLEU: 0.0331

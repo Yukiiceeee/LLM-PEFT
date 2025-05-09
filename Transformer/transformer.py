@@ -8,11 +8,13 @@ import random
 import math
 from torch import Tensor
 import os
-import multi_attention
-import layernorm
-import embedding
-import encoder
-import decoder
+import sys
+sys.path.append('/d2/mxy/LLM-PEFT')
+from Transformer.multi_attention import MultiHeadAttention as multi_attention
+from Transformer.layernorm import LayerNorm as layernorm
+from Transformer.embedding import TokenEmbedding as embedding
+from Transformer.encoder import Encoder as encoder
+from Transformer.decoder import Decoder as decoder
 
 class Transformer(nn.Module):
     # src_pad_idx: 源序列的填充索引

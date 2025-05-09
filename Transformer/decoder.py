@@ -8,9 +8,11 @@ import random
 import math
 from torch import Tensor
 import os
-import multi_attention
-import layernorm
-import embedding
+import sys
+sys.path.append('/d2/mxy/LLM-PEFT')
+from Transformer.multi_attention import MultiHeadAttention as multi_attention
+from Transformer.layernorm import LayerNorm as layernorm
+from Transformer.embedding import TokenEmbedding as embedding
 
 class DecoderLayer(nn.Module):
     def __init__(self, d_model, ffn_hidden, num_heads, dropout=0.1):
